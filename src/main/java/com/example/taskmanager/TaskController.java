@@ -1,5 +1,6 @@
 package com.example.taskmanager;
 
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -35,13 +36,18 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getAllTasks());
     }
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Task taskToCreate){
+    public ResponseEntity<Task> createTask(@Valid @RequestBody Task taskToCreate){
         log.info("Called createTask");
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(taskService.createTask(taskToCreate));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(taskService.createTask(taskToCreate));
+        } catch (IllegalArgumentException e) {
+            log.error("Could not create task: taskToCreate={}", taskToCreate, e);
+            return ResponseEntity.badRequest().build();
+        }
     }
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable("id") Long id, @RequestBody Task taskToUpdate){
+    public ResponseEntity<Task> updateTask(@PathVariable("id") Long id, @Valid @RequestBody Task taskToUpdate){
         log.info("Called updateTask id ={}, taskToUpdate={}", id, taskToUpdate);
         try {
             var updated = taskService.updateTask(id, taskToUpdate);
@@ -49,6 +55,9 @@ public class TaskController {
         } catch (NoSuchElementException e) {
             log.error("Task not found: id={}", id, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.error("Could not update task: id={}, taskToUpdate={}", id, taskToUpdate, e);
+            return ResponseEntity.badRequest().build();
         }
     }
     @DeleteMapping ("/{id}")
